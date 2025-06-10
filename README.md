@@ -1,5 +1,5 @@
 # 🚀 Gelişmiş QR Kod Oluşturucu
-# Bu uygulama, metin veya linklerden hızlıca özelleştirilebilir QR kodları oluşturmanızı sağlar. Tekli, toplu veya rastgele QR kodlar üretebilirsiniz.
+'''Bu uygulama, metin veya linklerden hızlıca özelleştirilebilir QR kodları oluşturmanızı sağlar. Tekli, toplu veya rastgele QR kodlar üretebilirsiniz. '''
 
 # ✨ Özellikler
 # Tekli QR Kod Oluşturma: Belirttiğiniz bir metin veya link için anında bir QR kod oluşturun.
