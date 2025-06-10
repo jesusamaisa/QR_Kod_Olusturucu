@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gelişmiş QR Kod Oluşturucu</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f9; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 8px T30px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h1 { margin-top: 0; color: #1a237e; text-align: center; }
+        .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+        .tab-button { padding: 10px 20px; cursor: pointer; border: none; background-color: transparent; font-size: 16px; position: relative; color: #555; }
+        .tab-button.active { font-weight: bold; color: #3f51b5; }
+        .tab-button.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background-color: #3f51b5; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .color-group { display: flex; gap: 10px; align-items: center; }
+        input[type="color"] { width: 100%; height: 45px; padding: 5px; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; }
+        button { background-color: #4CAF50; color: white; padding: 15px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; width: 100%; transition: background-color 0.3s; }
+        button:hover { background-color: #45a049; }
+        button:disabled { background-color: #aaa; cursor: not-allowed; }
+        #status-message { color: #1a237e; margin-top: 15px; text-align: center; font-weight: bold; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Gelişmiş QR Kod Oluşturucu</h1>
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('single')">Tekli Oluştur</button>
+        <button class="tab-button" onclick="switchTab('batch')">Toplu Oluştur</button>
+        <button class="tab-button" onclick="switchTab('random')">Rastgele Oluştur</button>
+    </div>
+
+    <form id="qr-form">
+        <input type="hidden" id="gen_type" name="gen_type" value="single">
+
+        <div id="data-group" class="form-group">
+            <label for="data">Link veya Metin</label>
+            <input type="text" id="data" name="data" placeholder="https://www.google.com">
+        </div>
+
+        <div id="quantity-group" class="form-group hidden">
+            <label for="quantity">Kaç Adet Oluşturulsun?</label>
+            <input type="number" id="quantity" name="quantity" value="10" min="1" max="500">
+        </div>
+
+        <div class="form-group color-group">
+            <div style="flex:1;">
+                <label for="fg_color">Ön Plan</label>
+                <input type="color" id="fg_color" name="fg_color" value="#000000">
+            </div>
+            <div style="flex:1;">
+                <label for="bg_color">Arka Plan</label>
+                <input type="color" id="bg_color" name="bg_color" value="#FFFFFF">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="size">Piksel Büyüklüğü (Kalite)</label>
+            <input type="number" id="size" name="size" value="10" min="1" max="50">
+        </div>
+        
+        <button type="submit" id="submit-button">Oluştur ve İndir</button>
+        <p id="status-message"></p>
+    </form>
+</div>
+
+<script>
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
+        document.querySelector(`.tab-button[onclick="switchTab('${tabName}')"]`).classList.add('active');
+
+        document.getElementById('gen_type').value = tabName;
+
+        const dataGroup = document.getElementById('data-group');
+        const quantityGroup = document.getElementById('quantity-group');
+        const quantityInput = document.getElementById('quantity');
+        const dataInput = document.getElementById('data');
+
+        if (tabName === 'single') {
+            dataGroup.classList.remove('hidden');
+            quantityGroup.classList.add('hidden');
+            quantityInput.value = 1; 
+            dataInput.required = true;
+        } else if (tabName === 'batch') {
+            dataGroup.classList.remove('hidden');
+            quantityGroup.classList.remove('hidden');
+            quantityInput.value = 10;
+            dataInput.required = true;
+        } else if (tabName === 'random') {
+            dataGroup.classList.add('hidden');
+            quantityGroup.classList.remove('hidden');
+            quantityInput.value = 10;
+            dataInput.required = false;
+        }
+    }
+
+    document.getElementById('qr-form').addEventListener('submit', function(e) {
+        e.preventDefault(); 
+
+        const form = e.target;
+        const button = document.getElementById('submit-button');
+        const statusMessage = document.getElementById('status-message');
+        
+        button.textContent = 'Oluşturuluyor... Lütfen Bekleyin';
+        button.disabled = true;
+        statusMessage.textContent = 'İsteğiniz işleniyor, bu işlem adet sayısına göre biraz zaman alabilir.';
+
+        fetch('/generate_batch', {
+            method: 'POST',
+            body: new FormData(form)
+        })
+        .then(response => {
+            if (response.ok) {
+                const disposition = response.headers.get('Content-Disposition');
+                let filename = "qrcode_arsivi.zip";
+                if (disposition && disposition.indexOf('attachment') !== -1) {
+                    const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                    const matches = filenameRegex.exec(disposition);
+                    if (matches != null && matches[1]) {
+                        filename = matches[1].replace(/['"]/g, '');
+                    }
+                }
+                return response.blob().then(blob => ({ blob, filename }));
+            } else {
+                throw new Error('Sunucuda bir hata oluştu.');
+            }
+        })
+        .then(({ blob, filename }) => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            statusMessage.textContent = 'Dosyanız başarıyla indirildi!';
+        })
+        .catch(error => {
+            console.error('Hata:', error);
+            statusMessage.textContent = 'Bir hata oluştu! Lütfen tekrar deneyin.';
+        })
+        .finally(() => {
+            button.textContent = 'Oluştur ve İndir';
+            button.disabled = false;
+            setTimeout(() => { statusMessage.textContent = ''; }, 5000);
+        });
+    });
+
+    switchTab('single');
+</script>
+
+</body>
+</html>
